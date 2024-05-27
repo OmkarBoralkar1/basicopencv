@@ -39,7 +39,7 @@ img = cv2.imread('Screenshot (90).png', 1)
 
 # Check if the image is loaded successfully
 if img is None:
-    print("Error: Unable to load the image.")
+    print("Error: Unable to load the image dwdw.")
     exit()
 
 # Get screen size
