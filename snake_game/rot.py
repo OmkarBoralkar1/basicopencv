@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import mediapipe as mp
+import math
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -14,16 +15,37 @@ prev_y = None
 frame_x = 0  # Initial x position of the frame within the canvas
 frame_y = 0  # Initial y position of the frame within the canvas
 
-def move_screen_content(direction):
-    global frame_x, frame_y
-    if direction == "left":
-        frame_x -= 50
-    elif direction == "right":
-        frame_x += 50
-    elif direction == "up":
-        frame_y -= 50
-    elif direction == "down":
-        frame_y += 50
+def get_angle(p1, p2):
+    """Calculate the angle between two vectors."""
+    v1 = np.array(p1)
+    v2 = np.array(p2)
+    unit_v1 = v1 / np.linalg.norm(v1)
+    unit_v2 = v2 / np.linalg.norm(v2)
+    dot_product = np.dot(unit_v1, unit_v2)
+    angle = np.arccos(np.clip(dot_product, -1.0, 1.0))
+    return np.degrees(angle)
+
+def rotate_image(image, angle):
+    """
+    Rotates an image (assumed to be in BGR format) around its center by a given angle.
+    :param image: The image to rotate.
+    :param angle: The angle by which to rotate the image.
+    :return: The rotated image.
+    """
+    (height, width) = image.shape[:2]
+    (cX, cY) = (width // 2, height // 2)
+
+    M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    nW = int((height * sin) + (width * cos))
+    nH = int((height * cos) + (width * sin))
+
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+
+    return cv2.warpAffine(image, M, (nW, nH))
 
 while True:
     # Capture frame-by-frame
@@ -44,22 +66,20 @@ while True:
         for hand_landmarks in results.multi_hand_landmarks:
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             
-            # Get the x and y coordinates of the index finger tip
-            x = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].x * frame.shape[1]
-            y = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].y * frame.shape[0]
-            
-            # Determine the direction of movement
-            if prev_x is not None and prev_y is not None:
-                if x > prev_x + 20:
-                    move_screen_content("right")
-                elif x < prev_x - 20:
-                    move_screen_content("left")
-                if y > prev_y + 20:
-                    move_screen_content("down")
-                elif y < prev_y - 20:
-                    move_screen_content("up")
+            # Calculate the angle between the vertical axis and the vector from the wrist to the index finger tip
+            wrist = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST]
+            index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            angle = get_angle([wrist.x, wrist.y], [index_finger_tip.x, index_finger_tip.y])
+
+            # Apply rotation to the frame
+            rotated_frame = rotate_image(frame, angle)
+
+            # Update the frame variable to use the rotated frame
+            frame = rotated_frame
             
             # Update the previous hand position
+            x = index_finger_tip.x
+            y = index_finger_tip.y
             prev_x = x
             prev_y = y
 

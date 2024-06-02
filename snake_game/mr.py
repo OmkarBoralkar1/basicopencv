@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import mediapipe as mp
+import math
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -17,14 +18,45 @@ frame_y = 0  # Initial y position of the frame within the canvas
 def move_screen_content(direction):
     global frame_x, frame_y
     if direction == "left":
-        frame_x -= 50
+        frame_x -= 40
     elif direction == "right":
-        frame_x += 50
+        frame_x += 40
     elif direction == "up":
-        frame_y -= 50
+        frame_y -= 40
     elif direction == "down":
-        frame_y += 50
+        frame_y += 40
 
+def get_angle(p1, p2):
+    """Calculate the angle between two vectors."""
+    v1 = np.array(p1)
+    v2 = np.array(p2)
+    unit_v1 = v1 / np.linalg.norm(v1)
+    unit_v2 = v2 / np.linalg.norm(v2)
+    dot_product = np.dot(unit_v1, unit_v2)
+    angle = np.arccos(np.clip(dot_product, -1.0, 1.0))
+    return np.degrees(angle)
+
+def rotate_image(image, angle):
+    """
+    Rotates an image (assumed to be in BGR format) around its center by a given angle.
+    :param image: The image to rotate.
+    :param angle: The angle by which to rotate the image.
+    :return: The rotated image.
+    """
+    (height, width) = image.shape[:2]
+    (cX, cY) = (width // 2, height // 2)
+
+    M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+    
+    nW = int((height * sin) + (width * cos))
+    nH = int((height * cos) + (width * sin))
+
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+
+    return cv2.warpAffine(image, M, (nW, nH))
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -58,7 +90,13 @@ while True:
                     move_screen_content("down")
                 elif y < prev_y - 20:
                     move_screen_content("up")
-            
+                
+                # Calculate rotation angle based on horizontal movement
+                angle = get_angle([prev_x, prev_y], [x, y])
+                print ("the angle is",angle)
+                rotated_frame = rotate_image(frame, angle)
+                frame = rotated_frame  # Use the rotated frame for further processing
+
             # Update the previous hand position
             prev_x = x
             prev_y = y

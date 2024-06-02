@@ -1,6 +1,11 @@
 import cv2
 import os
-import matplotlib.pyplot as plt  # Add this line
+import matplotlib.pyplot as plt
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+
+# Define img as a global variable
+img = None
 
 # Callback function for mouse events
 def crop_image(event, x, y, flags, param):
@@ -15,7 +20,7 @@ def crop_image(event, x, y, flags, param):
         bottom_right_pt = (x, y)
 
         # Crop and show only the selected region
-        if top_left_pt != (-1, -1) and bottom_right_pt != (-1, -1):
+        if top_left_pt!= (-1, -1) and bottom_right_pt!= (-1, -1):
             cropped_img = img_resized[top_left_pt[1]:bottom_right_pt[1], top_left_pt[0]:bottom_right_pt[0]]
             cv2.imshow('Select Region', img_resized)
 
@@ -28,18 +33,45 @@ def crop_image(event, x, y, flags, param):
             cv2.setMouseCallback('Select Region', crop_image)
 
             # Display the cropped image using Matplotlib
-            titles = ['cropped_img']
+            titles = ['Cropped Image']
             images = [cropped_img_resized]
-            plt.imshow(cropped_img)
+            plt.figure(figsize=(10, 10))  # Optional: Adjust figure size
+            plt.imshow(cv2.cvtColor(cropped_img_resized, cv2.COLOR_BGR2RGB))  # Convert BGR to RGB for Matplotlib
             plt.title(titles[0])  # Add title
-            plt.show()  # Add parentheses
+            plt.axis('off')  # Hide axes
+            plt.show()  # Show the plot
 
 # Load the image
-img = cv2.imread('Screenshot (90).png', 1)
+def select_image():
+    print('select image')
+    global img
+    Tk().withdraw()  # Keep the root window from appearing
+    
+    filename = askopenfilename(filetypes=[("Image files", "*.jpeg;*.jpg;*.png")])
+    
+    if not filename:
+        print("No file selected.")
+        return None  # Return None if no file is selected
+    
+    # Check if the file exists
+    if not os.path.isfile(filename):
+        print(f"The file {filename} does not exist.")
+        return None
+    
+    try:
+        img = cv2.imread(filename)
+        if img is None:
+            raise ValueError(f"Unable to load the image {filename}.")
+    except Exception as e:
+        print(f"An error occurred while loading the image {filename}: {str(e)}")
+        return None
+    
+    return img
 
+img1=select_image()
 # Check if the image is loaded successfully
-if img is None:
-    print("Error: Unable to load the image dwdtw.")
+if img1 is None:
+    print("Error: Unable to load the image.")
     exit()
 
 # Get screen size
@@ -54,7 +86,7 @@ top_left_pt, bottom_right_pt = (-1, -1), (-1, -1)
 cropped_img_resized = None
 
 # Create a window and set the callback function
-cv2.imshow('Select Region', img_resized)
+cv2.namedWindow('Select Region')
 cv2.setMouseCallback('Select Region', crop_image)
 
 while True:
