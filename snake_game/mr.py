@@ -49,7 +49,7 @@ def rotate_image(image, angle):
     M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
     cos = np.abs(M[0, 0])
     sin = np.abs(M[0, 1])
-    
+
     nW = int((height * sin) + (width * cos))
     nH = int((height * cos) + (width * sin))
 
@@ -62,7 +62,6 @@ while True:
     ret, frame = cap.read()
     if not ret:
         break
-
     # Flip the frame horizontally (mirror effect)
     frame = cv2.flip(frame, 1)
 
